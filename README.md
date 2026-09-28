@@ -12,6 +12,8 @@ Supabase can provide the PostgreSQL database and private storage for signatures 
 
 Intake photos are resized in the browser to at most 1280 pixels on the longest edge and encoded as JPEG at 72% quality before upload. Only the resized images are stored.
 
+Employee intake starts with a phone lookup. Customer records keep a first name and email, and repairs are grouped under customer device models such as “iPhone 12”; no IMEI is required. Existing repair records are linked to device models by migration `0003_customer_devices.sql`.
+
 ## Setup
 
 1. Copy `.env.example` to `.env` and fill in the required values. Keep `.env` private.

@@ -68,6 +68,8 @@ export const api = {
   updateStatus: (id, status) =>
     request('PATCH', `/api/repairs/${id}/status`, { token: getToken(), body: { status } }),
   intake: (data) => request('POST', '/api/intake', { token: getToken(), body: data }),
+  lookupCustomer: (phone) =>
+    request('POST', '/api/intake/lookup', { token: getToken(), body: { phone } }),
 
   // Employees (admin)
   listEmployees: () => request('GET', '/api/employees', { token: getToken() }),

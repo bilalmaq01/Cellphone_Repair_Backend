@@ -63,6 +63,7 @@ func main() {
 	}
 	mux.Handle("GET /api/auth/me", authed(srv.me))
 	mux.Handle("POST /api/intake", authed(srv.intake))
+	mux.Handle("POST /api/intake/lookup", authed(srv.lookupCustomer))
 	mux.Handle("GET /api/repairs", authed(srv.listRepairs))
 	mux.Handle("GET /api/repairs/{id}", authed(srv.getRepair))
 	mux.Handle("PATCH /api/repairs/{id}/status", authed(srv.updateRepairStatus))

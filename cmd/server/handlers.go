@@ -34,7 +34,8 @@ type server struct {
 // IntakeRequest is the JSON body submitted at repair intake (by an employee).
 type IntakeRequest struct {
 	Phone      string `json:"phone"`
-	Name       string `json:"name"`
+	FirstName  string `json:"first_name"`
+	Name       string `json:"name"` // accepted for older clients
 	Email      string `json:"email"`
 	Device     string `json:"device"`
 	Issue      string `json:"issue"`
@@ -44,12 +45,51 @@ type IntakeRequest struct {
 	// Signed authorization (optional unless Storage is configured on the client).
 	Signature    string `json:"signature"`      // base64 PNG, optionally a data URL
 	Terms        string `json:"terms"`          // terms text shown at signing
-	SignedByName string `json:"signed_by_name"` // defaults to Name
+	SignedByName string `json:"signed_by_name"` // defaults to the customer's first name
 }
 
 // health is a simple liveness check.
 func (s *server) health(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// lookupCustomer starts intake by finding the customer profile for a phone number.
+func (s *server) lookupCustomer(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	normPhone, err := phone.Normalize(req.Phone)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid phone number")
+		return
+	}
+	customer, err := s.store.GetCustomer(r.Context(), normPhone)
+	if errors.Is(err, store.ErrNotFound) {
+		respond.JSON(w, http.StatusOK, map[string]any{"found": false, "phone": normPhone})
+		return
+	}
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "could not look up customer")
+		return
+	}
+	devices, err := s.store.CustomerDevices(r.Context(), normPhone)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "could not load customer devices")
+		return
+	}
+	respond.JSON(w, http.StatusOK, map[string]any{
+		"found": true,
+		"customer": map[string]any{
+			"phone_number": customer.PhoneNumber,
+			"first_name":   customer.FirstName,
+			"email":        customer.Email,
+		},
+		"devices": devices,
+	})
 }
 
 // intake saves the customer and repair, uploads the required phone photos,
@@ -66,8 +106,15 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	if req.Name == "" || req.Device == "" || req.Issue == "" || req.FrontPhoto == "" || req.BackPhoto == "" {
-		respond.Error(w, http.StatusBadRequest, "name, device, issue, and both phone photos are required")
+	if req.FirstName == "" {
+		req.FirstName = req.Name
+	}
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.Device = strings.TrimSpace(req.Device)
+	req.Issue = strings.TrimSpace(req.Issue)
+	req.Email = strings.TrimSpace(req.Email)
+	if req.FirstName == "" || req.Device == "" || req.Issue == "" || req.FrontPhoto == "" || req.BackPhoto == "" {
+		respond.Error(w, http.StatusBadRequest, "first name, device, issue, and both phone photos are required")
 		return
 	}
 
@@ -151,12 +198,22 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 	if req.Email != "" {
 		email = &req.Email
 	}
+	legacyName := req.Name
+	if legacyName == "" {
+		legacyName = req.FirstName
+	}
 	if _, err := s.store.UpsertCustomer(r.Context(), models.Customer{
 		PhoneNumber: normPhone,
-		Name:        req.Name,
+		Name:        legacyName,
+		FirstName:   req.FirstName,
 		Email:       email,
 	}); err != nil {
 		respond.Error(w, http.StatusInternalServerError, "could not save customer")
+		return
+	}
+	device, err := s.store.GetOrCreateCustomerDevice(r.Context(), normPhone, req.Device)
+	if err != nil {
+		respond.Error(w, http.StatusInternalServerError, "could not save customer device")
 		return
 	}
 
@@ -168,7 +225,8 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 
 	repair, err := s.store.CreateRepair(r.Context(), models.Repair{
 		CustomerPhone:    normPhone,
-		Device:           req.Device,
+		CustomerDeviceID: &device.ID,
+		Device:           device.ModelName,
 		IssueDescription: req.Issue,
 		IntakeEmployeeID: intakeEmployeeID,
 		FrontPhotoPath:   &frontPath,
@@ -183,7 +241,7 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 	if signaturePath != "" {
 		signedBy := req.SignedByName
 		if signedBy == "" {
-			signedBy = req.Name
+			signedBy = req.FirstName
 		}
 		terms := req.Terms
 		if terms == "" {

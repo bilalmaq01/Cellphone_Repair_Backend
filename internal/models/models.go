@@ -45,15 +45,32 @@ type Employee struct {
 type Customer struct {
 	PhoneNumber string    `json:"phone_number"`
 	Name        string    `json:"name"`
+	FirstName   string    `json:"first_name"`
 	Email       *string   `json:"email,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// CustomerDevice groups a customer's repair history by device model.
+type CustomerDevice struct {
+	ID        int64          `json:"id"`
+	ModelName string         `json:"model_name"`
+	Repairs   []DeviceRepair `json:"repairs"`
+}
+
+// DeviceRepair is the history shown for one customer-owned device model.
+type DeviceRepair struct {
+	ID               int64     `json:"id"`
+	IssueDescription string    `json:"issue_description"`
+	Status           string    `json:"status"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 // Repair is a single repair job for a customer's device.
 type Repair struct {
 	ID                  int64      `json:"id"`
 	CustomerPhone       string     `json:"customer_phone"`
+	CustomerDeviceID    *int64     `json:"customer_device_id,omitempty"`
 	Device              string     `json:"device"`
 	IssueDescription    string     `json:"issue_description"`
 	Status              string     `json:"status"`
