@@ -36,6 +36,19 @@ export function humanStatus(s) {
   return (s || '').toLowerCase().replaceAll('_', ' ')
 }
 
+// Device condition checklist captured at intake. Keys must stay in sync with
+// checklistKeys in the Go server (cmd/server/handlers.go).
+export const INTAKE_CHECKLIST = [
+  { key: 'powers_on', label: 'Does the device power on?' },
+  { key: 'takes_charge', label: 'Does the device take a charge?' },
+  { key: 'buttons_working', label: 'Are all buttons working?' },
+  { key: 'front_glass_cracked', label: 'Glass front cracked?' },
+  { key: 'back_glass_cracked', label: 'Glass back / camera lens cracked?' },
+  { key: 'lcd_working', label: 'LCD working?' },
+  { key: 'frame_damage', label: 'Frame damage?' },
+  { key: 'water_damage', label: 'Visible exterior water damage?' },
+]
+
 async function request(method, path, { body, token } = {}) {
   const headers = {}
   if (body) headers['Content-Type'] = 'application/json'
@@ -49,6 +62,15 @@ async function request(method, path, { body, token } = {}) {
   const text = await res.text()
   const data = text ? JSON.parse(text) : null
   if (!res.ok) {
+    // An expired/invalid employee token should log the user out and bounce them
+    // to the login screen instead of showing a raw error. Scoped to the employee
+    // token so public customer status-check 401s don't force a logout.
+    if (res.status === 401 && token && token === getToken()) {
+      clearAuth()
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login?expired=1')
+      }
+    }
     const msg = (data && data.error) || `request failed (${res.status})`
     throw new Error(msg)
   }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, humanStatus } from '../api'
+import { api, humanStatus, INTAKE_CHECKLIST } from '../api'
 import SignaturePad from '../SignaturePad'
 import PhotoCapture from '../PhotoCapture'
 
@@ -20,6 +20,7 @@ export default function Intake() {
   const [signature, setSignature] = useState('')
   const [frontPhoto, setFrontPhoto] = useState('')
   const [backPhoto, setBackPhoto] = useState('')
+  const [checklist, setChecklist] = useState({})
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -57,6 +58,10 @@ export default function Intake() {
     setForm((current) => ({ ...current, device: name }))
   }
 
+  function setAnswer(key, value) {
+    setChecklist((current) => ({ ...current, [key]: value }))
+  }
+
   function continueToRepair(e) {
     e.preventDefault()
     if (!form.first_name.trim()) return setError('Enter the customer’s first name.')
@@ -78,6 +83,7 @@ export default function Intake() {
         signature,
         front_photo: frontPhoto,
         back_photo: backPhoto,
+        checklist,
         terms: TERMS,
         signed_by_name: form.first_name,
       })
@@ -151,6 +157,34 @@ export default function Intake() {
           <p className="muted">{form.first_name} · {form.phone} · {form.device}</p>
           <label htmlFor="issue">Issue *</label>
           <textarea id="issue" value={form.issue} onChange={update('issue')} placeholder="Describe the problem" required />
+
+          <h2 className="section-heading">Device condition checklist</h2>
+          <p className="muted">Record the device's condition at drop-off.</p>
+          <div className="checklist">
+            {INTAKE_CHECKLIST.map((item) => (
+              <div className="checklist-row" key={item.key}>
+                <span className="checklist-label">{item.label}</span>
+                <span className="checklist-answers">
+                  <button
+                    type="button"
+                    className={`checklist-btn${checklist[item.key] === true ? ' yes' : ''}`}
+                    aria-pressed={checklist[item.key] === true}
+                    onClick={() => setAnswer(item.key, true)}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={`checklist-btn${checklist[item.key] === false ? ' no' : ''}`}
+                    aria-pressed={checklist[item.key] === false}
+                    onClick={() => setAnswer(item.key, false)}
+                  >
+                    No
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
 
           <h2 className="section-heading">Phone photos</h2>
           <p className="muted">Take clear photos of the front and back of the phone.</p>

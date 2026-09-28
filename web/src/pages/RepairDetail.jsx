@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { api, STATUSES, humanStatus } from '../api'
+import { api, STATUSES, humanStatus, INTAKE_CHECKLIST } from '../api'
 
 export default function RepairDetail() {
   const { id } = useParams()
@@ -52,6 +52,22 @@ export default function RepairDetail() {
         <p>{repair.issue_description}</p>
         <p>Current status: <span className="badge">{humanStatus(repair.status)}</span></p>
       </div>
+
+      {repair.intake_checklist && Object.keys(repair.intake_checklist).length > 0 && (
+        <div className="card">
+          <h2>Device condition at intake</h2>
+          <ul className="checklist-summary">
+            {INTAKE_CHECKLIST.filter((item) => item.key in repair.intake_checklist).map((item) => (
+              <li key={item.key}>
+                <span>{item.label}</span>
+                <span className={`badge ${repair.intake_checklist[item.key] ? 'yes' : 'no'}`}>
+                  {repair.intake_checklist[item.key] ? 'Yes' : 'No'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(repair.front_photo_url || repair.back_photo_url) && (
         <div className="card">

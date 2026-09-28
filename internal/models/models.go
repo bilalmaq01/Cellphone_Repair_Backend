@@ -68,22 +68,23 @@ type DeviceRepair struct {
 
 // Repair is a single repair job for a customer's device.
 type Repair struct {
-	ID                  int64      `json:"id"`
-	CustomerPhone       string     `json:"customer_phone"`
-	CustomerDeviceID    *int64     `json:"customer_device_id,omitempty"`
-	Device              string     `json:"device"`
-	IssueDescription    string     `json:"issue_description"`
-	Status              string     `json:"status"`
-	Price               *float64   `json:"price,omitempty"`
-	Notes               *string    `json:"notes,omitempty"`
-	PartsUsed           *string    `json:"parts_used,omitempty"`
-	Warranty            *string    `json:"warranty,omitempty"`
-	EstimatedCompletion *time.Time `json:"estimated_completion,omitempty"`
-	IntakeEmployeeID    *int64     `json:"intake_employee_id,omitempty"`
-	FrontPhotoPath      *string    `json:"-"`
-	BackPhotoPath       *string    `json:"-"`
-	FrontPhotoURL       string     `json:"front_photo_url,omitempty"`
-	BackPhotoURL        string     `json:"back_photo_url,omitempty"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	ID                  int64           `json:"id"`
+	CustomerPhone       string          `json:"customer_phone"`
+	CustomerDeviceID    *int64          `json:"customer_device_id,omitempty"`
+	Device              string          `json:"device"`
+	IssueDescription    string          `json:"issue_description"`
+	Status              string          `json:"status"`
+	Price               *float64        `json:"price,omitempty"`
+	Notes               *string         `json:"notes,omitempty"`
+	PartsUsed           *string         `json:"parts_used,omitempty"`
+	Warranty            *string         `json:"warranty,omitempty"`
+	EstimatedCompletion *time.Time      `json:"estimated_completion,omitempty"`
+	IntakeEmployeeID    *int64          `json:"intake_employee_id,omitempty"`
+	IntakeChecklist     map[string]bool `json:"intake_checklist,omitempty"`
+	FrontPhotoPath      *string         `json:"-"`
+	BackPhotoPath       *string         `json:"-"`
+	FrontPhotoURL       string          `json:"front_photo_url,omitempty"`
+	BackPhotoURL        string          `json:"back_photo_url,omitempty"`
+	CreatedAt           time.Time       `json:"created_at"`
+	UpdatedAt           time.Time       `json:"updated_at"`
 }

@@ -42,10 +42,45 @@ type IntakeRequest struct {
 	FrontPhoto string `json:"front_photo"`
 	BackPhoto  string `json:"back_photo"`
 
+	// Device condition checklist: known item keys to yes/no answers.
+	Checklist map[string]bool `json:"checklist"`
+
 	// Signed authorization (optional unless Storage is configured on the client).
 	Signature    string `json:"signature"`      // base64 PNG, optionally a data URL
 	Terms        string `json:"terms"`          // terms text shown at signing
 	SignedByName string `json:"signed_by_name"` // defaults to the customer's first name
+}
+
+// checklistKeys are the recognised device-condition checklist items. Answers for
+// any other key submitted by a client are ignored. Keep in sync with the
+// INTAKE_CHECKLIST list in the web client.
+var checklistKeys = map[string]bool{
+	"powers_on":           true,
+	"takes_charge":        true,
+	"buttons_working":     true,
+	"front_glass_cracked": true,
+	"back_glass_cracked":  true,
+	"lcd_working":         true,
+	"frame_damage":        true,
+	"water_damage":        true,
+}
+
+// cleanChecklist keeps only recognised checklist keys. It returns nil when
+// nothing valid remains so the column is stored as NULL rather than "{}".
+func cleanChecklist(in map[string]bool) map[string]bool {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(in))
+	for key, val := range in {
+		if checklistKeys[key] {
+			out[key] = val
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // health is a simple liveness check.
@@ -229,6 +264,7 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 		Device:           device.ModelName,
 		IssueDescription: req.Issue,
 		IntakeEmployeeID: intakeEmployeeID,
+		IntakeChecklist:  cleanChecklist(req.Checklist),
 		FrontPhotoPath:   &frontPath,
 		BackPhotoPath:    &backPath,
 	})
