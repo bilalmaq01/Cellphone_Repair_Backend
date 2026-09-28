@@ -1,6 +1,6 @@
 # Cellphone Repair
 
-A repair shop application with a Go API and a React interface. It supports employee sign-in, repair intake and status updates, customer status checks with SMS verification, and repair authorization records.
+A repair shop application with a Go API and a React interface. It supports employee sign-in, repair intake with front and back phone photos, repair status updates, customer status checks with SMS verification, and signed repair authorization records.
 
 ## Requirements
 
@@ -8,7 +8,9 @@ A repair shop application with a Go API and a React interface. It supports emplo
 - Node.js 22 or later and npm
 - PostgreSQL
 
-Supabase can provide the PostgreSQL database and signature image storage. Twilio is optional; without Twilio credentials, the app uses a development SMS logger.
+Supabase can provide the PostgreSQL database and private storage for signatures and repair photos. Twilio is optional; without Twilio credentials, the app uses a development SMS logger.
+
+Intake photos are resized in the browser to at most 1280 pixels on the longest edge and encoded as JPEG at 72% quality before upload. Only the resized images are stored.
 
 ## Setup
 

@@ -63,6 +63,10 @@ type Repair struct {
 	Warranty            *string    `json:"warranty,omitempty"`
 	EstimatedCompletion *time.Time `json:"estimated_completion,omitempty"`
 	IntakeEmployeeID    *int64     `json:"intake_employee_id,omitempty"`
+	FrontPhotoPath      *string    `json:"-"`
+	BackPhotoPath       *string    `json:"-"`
+	FrontPhotoURL       string     `json:"front_photo_url,omitempty"`
+	BackPhotoURL        string     `json:"back_photo_url,omitempty"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 }

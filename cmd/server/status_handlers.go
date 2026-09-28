@@ -21,6 +21,8 @@ type customerRepairView struct {
 	EstimatedCompletion *time.Time `json:"estimated_completion,omitempty"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
+	FrontPhotoURL       string     `json:"front_photo_url,omitempty"`
+	BackPhotoURL        string     `json:"back_photo_url,omitempty"`
 }
 
 func toCustomerView(r models.Repair) customerRepairView {
@@ -33,6 +35,8 @@ func toCustomerView(r models.Repair) customerRepairView {
 		EstimatedCompletion: r.EstimatedCompletion,
 		CreatedAt:           r.CreatedAt,
 		UpdatedAt:           r.UpdatedAt,
+		FrontPhotoURL:       r.FrontPhotoURL,
+		BackPhotoURL:        r.BackPhotoURL,
 	}
 }
 
@@ -99,7 +103,7 @@ func (s *server) verifyOTP(w http.ResponseWriter, r *http.Request) {
 	}
 	respond.JSON(w, http.StatusOK, map[string]any{
 		"token":   token,
-		"repairs": viewList(repairs),
+		"repairs": s.viewList(r, repairs),
 	})
 }
 
@@ -115,13 +119,14 @@ func (s *server) customerRepairs(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusInternalServerError, "could not load repairs")
 		return
 	}
-	respond.JSON(w, http.StatusOK, viewList(repairs))
+	respond.JSON(w, http.StatusOK, s.viewList(r, repairs))
 }
 
-func viewList(repairs []models.Repair) []customerRepairView {
+func (s *server) viewList(r *http.Request, repairs []models.Repair) []customerRepairView {
 	views := make([]customerRepairView, 0, len(repairs))
-	for _, r := range repairs {
-		views = append(views, toCustomerView(r))
+	for i := range repairs {
+		s.addRepairPhotoURLs(r.Context(), &repairs[i])
+		views = append(views, toCustomerView(repairs[i]))
 	}
 	return views
 }

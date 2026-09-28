@@ -66,6 +66,27 @@ func (c *Client) Upload(ctx context.Context, objectPath string, data []byte, con
 	return objectPath, nil
 }
 
+// Delete removes an object from the configured bucket.
+func (c *Client) Delete(ctx context.Context, objectPath string) error {
+	url := fmt.Sprintf("%s/storage/v1/object/%s/%s", c.baseURL, c.bucket, objectPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	c.setAuth(req)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("storage delete: status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
 // SignedURL returns a temporary URL to view a private object, valid for the
 // given number of seconds.
 func (c *Client) SignedURL(ctx context.Context, objectPath string, expiresIn int) (string, error) {

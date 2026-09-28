@@ -76,6 +76,12 @@ export default function StatusCheck() {
                 <div>
                   <div style={{ fontWeight: 600 }}>{r.device}</div>
                   <div className="muted">{r.issue}</div>
+                  {(r.front_photo_url || r.back_photo_url) && (
+                    <div className="repair-photos customer-photos">
+                      {r.front_photo_url && <figure><img src={r.front_photo_url} alt="Front of your phone" /><figcaption>Front</figcaption></figure>}
+                      {r.back_photo_url && <figure><img src={r.back_photo_url} alt="Back of your phone" /><figcaption>Back</figcaption></figure>}
+                    </div>
+                  )}
                 </div>
                 <span className={badgeClass(r.status)}>{humanStatus(r.status)}</span>
               </div>

@@ -14,7 +14,7 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 
-	// Port the HTTP server listens on (App Runner sets PORT). Defaults to 8080.
+	// Port the HTTP server listens on (ECS sets PORT). Defaults to 8080.
 	Port string
 	// StaticDir is the directory of built frontend assets to serve. Empty = API only.
 	StaticDir string

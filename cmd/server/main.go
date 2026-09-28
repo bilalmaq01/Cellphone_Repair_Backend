@@ -42,9 +42,9 @@ func main() {
 	var storageClient *storage.Client
 	if cfg.SupabaseURL != "" && cfg.SupabaseServiceKey != "" && cfg.SignatureBucket != "" {
 		storageClient = storage.New(cfg.SupabaseURL, cfg.SupabaseServiceKey, cfg.SignatureBucket)
-		log.Println("storage: Supabase Storage enabled for signatures")
+		log.Println("storage: Supabase Storage enabled for repair media")
 	} else {
-		log.Println("storage: not configured — signature capture disabled")
+		log.Println("storage: not configured — signatures and repair photos disabled")
 	}
 
 	srv := &server{store: store.New(pool), auth: authMgr, sms: smsClient, storage: storageClient}

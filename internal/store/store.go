@@ -131,14 +131,14 @@ func (s *Store) UpdateEmployee(ctx context.Context, id int64, role *string, acti
 
 const repairColumns = `id, customer_phone, device, issue_description, status,
 	price, notes, parts_used, warranty, estimated_completion,
-	intake_employee_id, created_at, updated_at`
+	intake_employee_id, front_photo_path, back_photo_path, created_at, updated_at`
 
 func scanRepair(row pgx.Row) (models.Repair, error) {
 	var r models.Repair
 	err := row.Scan(
 		&r.ID, &r.CustomerPhone, &r.Device, &r.IssueDescription, &r.Status,
 		&r.Price, &r.Notes, &r.PartsUsed, &r.Warranty, &r.EstimatedCompletion,
-		&r.IntakeEmployeeID, &r.CreatedAt, &r.UpdatedAt,
+		&r.IntakeEmployeeID, &r.FrontPhotoPath, &r.BackPhotoPath, &r.CreatedAt, &r.UpdatedAt,
 	)
 	return r, err
 }
@@ -146,10 +146,13 @@ func scanRepair(row pgx.Row) (models.Repair, error) {
 // CreateRepair inserts a new repair and returns the stored row.
 func (s *Store) CreateRepair(ctx context.Context, r models.Repair) (models.Repair, error) {
 	row := s.pool.QueryRow(ctx, `
-		insert into repairs (customer_phone, device, issue_description, intake_employee_id)
-		values ($1, $2, $3, $4)
+		insert into repairs (
+			customer_phone, device, issue_description, intake_employee_id, front_photo_path, back_photo_path
+		)
+		values ($1, $2, $3, $4, $5, $6)
 		returning `+repairColumns,
-		r.CustomerPhone, r.Device, r.IssueDescription, r.IntakeEmployeeID)
+		r.CustomerPhone, r.Device, r.IssueDescription, r.IntakeEmployeeID,
+		r.FrontPhotoPath, r.BackPhotoPath)
 	return scanRepair(row)
 }
 

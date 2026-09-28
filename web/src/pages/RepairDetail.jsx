@@ -53,6 +53,16 @@ export default function RepairDetail() {
         <p>Current status: <span className="badge">{humanStatus(repair.status)}</span></p>
       </div>
 
+      {(repair.front_photo_url || repair.back_photo_url) && (
+        <div className="card">
+          <h2>Phone photos</h2>
+          <div className="repair-photos">
+            {repair.front_photo_url && <figure><img src={repair.front_photo_url} alt="Front of the phone" /><figcaption>Front</figcaption></figure>}
+            {repair.back_photo_url && <figure><img src={repair.back_photo_url} alt="Back of the phone" /><figcaption>Back</figcaption></figure>}
+          </div>
+        </div>
+      )}
+
       {authz && (
         <div className="card">
           <h2>Signed authorization</h2>

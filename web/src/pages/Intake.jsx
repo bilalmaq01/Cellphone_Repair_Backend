@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import SignaturePad from '../SignaturePad'
+import PhotoCapture from '../PhotoCapture'
 
 const EMPTY = { phone: '', name: '', email: '', device: '', issue: '' }
 
@@ -14,6 +15,8 @@ const TERMS =
 export default function Intake() {
   const [form, setForm] = useState(EMPTY)
   const [signature, setSignature] = useState('')
+  const [frontPhoto, setFrontPhoto] = useState('')
+  const [backPhoto, setBackPhoto] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,6 +29,7 @@ export default function Intake() {
   async function submit(e) {
     e.preventDefault()
     setError('')
+    if (!frontPhoto || !backPhoto) return setError('Add photos of the front and back of the phone.')
     if (!agreed) return setError('The customer must agree to the terms.')
     if (!signature) return setError('A customer signature is required.')
     setBusy(true)
@@ -33,6 +37,8 @@ export default function Intake() {
       const repair = await api.intake({
         ...form,
         signature,
+        front_photo: frontPhoto,
+        back_photo: backPhoto,
         terms: TERMS,
         signed_by_name: form.name,
       })
@@ -58,6 +64,13 @@ export default function Intake() {
         <input value={form.device} onChange={update('device')} placeholder="iPhone 13" required />
         <label>Issue *</label>
         <textarea value={form.issue} onChange={update('issue')} placeholder="Describe the problem" required />
+
+        <h2 className="section-heading">Phone photos</h2>
+        <p className="muted">Take clear photos of the front and back of the phone.</p>
+        <div className="photo-fields">
+          <PhotoCapture label="Front" value={frontPhoto} onChange={setFrontPhoto} />
+          <PhotoCapture label="Back" value={backPhoto} onChange={setBackPhoto} />
+        </div>
 
         <label>Repair authorization</label>
         <div className="muted" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, maxHeight: 120, overflow: 'auto' }}>

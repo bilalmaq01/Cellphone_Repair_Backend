@@ -43,7 +43,7 @@ Configure the service with:
 
 - **Container port:** 8080
 - **Health check path:** /health
-- **Environment variables:** DATABASE_URL, JWT_SECRET, and the Supabase settings listed in .env.example
+- **Environment variables:** DATABASE_URL, JWT_SECRET, and the Supabase settings listed in .env.example. Create a private Supabase Storage bucket matching SUPABASE_SIGNATURE_BUCKET for signatures and phone photos.
 - **Task execution role and infrastructure role:** create or select the roles requested by the console
 
 Set secrets in the service configuration or reference AWS Secrets Manager values. Do not add .env to the image or store production credentials in the repository. Leave the TWILIO_* variables unset to use the development SMS logger; configure them to send real texts.

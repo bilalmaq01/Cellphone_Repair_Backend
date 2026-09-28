@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,11 +33,13 @@ type server struct {
 
 // IntakeRequest is the JSON body submitted at repair intake (by an employee).
 type IntakeRequest struct {
-	Phone  string `json:"phone"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Device string `json:"device"`
-	Issue  string `json:"issue"`
+	Phone      string `json:"phone"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	Device     string `json:"device"`
+	Issue      string `json:"issue"`
+	FrontPhoto string `json:"front_photo"`
+	BackPhoto  string `json:"back_photo"`
 
 	// Signed authorization (optional unless Storage is configured on the client).
 	Signature    string `json:"signature"`      // base64 PNG, optionally a data URL
@@ -48,16 +52,22 @@ func (s *server) health(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// intake creates (or updates) the customer, creates a repair, and — if a
-// signature was captured — uploads it and records the signed authorization.
+// intake saves the customer and repair, uploads the required phone photos,
+// and records the signed authorization when provided.
 func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 	var req IntakeRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<20)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			respond.Error(w, http.StatusRequestEntityTooLarge, "intake photos are too large")
+			return
+		}
 		respond.Error(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	if req.Name == "" || req.Device == "" || req.Issue == "" {
-		respond.Error(w, http.StatusBadRequest, "name, device, and issue are required")
+	if req.Name == "" || req.Device == "" || req.Issue == "" || req.FrontPhoto == "" || req.BackPhoto == "" {
+		respond.Error(w, http.StatusBadRequest, "name, device, issue, and both phone photos are required")
 		return
 	}
 
@@ -67,26 +77,74 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If a signature was provided, upload it FIRST so a failure here doesn't
-	// leave a dangling repair. objectPath doesn't depend on the repair id.
+	if s.storage == nil {
+		respond.Error(w, http.StatusServiceUnavailable, "phone photo storage is not configured (Supabase Storage)")
+		return
+	}
+	frontData, err := decodePhoto(req.FrontPhoto)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid front phone photo")
+		return
+	}
+	backData, err := decodePhoto(req.BackPhoto)
+	if err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid back phone photo")
+		return
+	}
+
 	var signaturePath string
+	var signatureData []byte
 	if req.Signature != "" {
-		if s.storage == nil {
-			respond.Error(w, http.StatusServiceUnavailable, "signature capture is not configured (Supabase Storage)")
-			return
-		}
-		data, err := decodeSignature(req.Signature)
+		signatureData, err = decodeSignature(req.Signature)
 		if err != nil {
 			respond.Error(w, http.StatusBadRequest, "invalid signature image")
 			return
 		}
-		path := fmt.Sprintf("%s-%d.png", strings.TrimPrefix(normPhone, "+"), time.Now().UnixNano())
-		if _, err := s.storage.Upload(r.Context(), path, data, "image/png"); err != nil {
+	}
+
+	var key [16]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		respond.Error(w, http.StatusInternalServerError, "could not prepare phone photos")
+		return
+	}
+	photoPrefix := "repairs/" + hex.EncodeToString(key[:])
+	frontPath := photoPrefix + "/front.jpg"
+	backPath := photoPrefix + "/back.jpg"
+	var uploadedPaths []string
+	photosSaved := false
+	defer func() {
+		if photosSaved {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		for _, path := range uploadedPaths {
+			if err := s.storage.Delete(cleanupCtx, path); err != nil {
+				log.Printf("intake: could not remove uploaded object %s: %v", path, err)
+			}
+		}
+	}()
+	if _, err := s.storage.Upload(r.Context(), frontPath, frontData, "image/jpeg"); err != nil {
+		log.Printf("intake: front photo upload failed: %v", err)
+		respond.Error(w, http.StatusInternalServerError, "could not upload front photo")
+		return
+	}
+	uploadedPaths = append(uploadedPaths, frontPath)
+	if _, err := s.storage.Upload(r.Context(), backPath, backData, "image/jpeg"); err != nil {
+		log.Printf("intake: back photo upload failed: %v", err)
+		respond.Error(w, http.StatusInternalServerError, "could not upload back photo")
+		return
+	}
+	uploadedPaths = append(uploadedPaths, backPath)
+
+	if len(signatureData) > 0 {
+		signaturePath = fmt.Sprintf("%s-%d.png", strings.TrimPrefix(normPhone, "+"), time.Now().UnixNano())
+		if _, err := s.storage.Upload(r.Context(), signaturePath, signatureData, "image/png"); err != nil {
 			log.Printf("intake: signature upload failed: %v", err)
 			respond.Error(w, http.StatusInternalServerError, "could not upload signature")
 			return
 		}
-		signaturePath = path
+		uploadedPaths = append(uploadedPaths, signaturePath)
 	}
 
 	var email *string
@@ -113,11 +171,14 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 		Device:           req.Device,
 		IssueDescription: req.Issue,
 		IntakeEmployeeID: intakeEmployeeID,
+		FrontPhotoPath:   &frontPath,
+		BackPhotoPath:    &backPath,
 	})
 	if err != nil {
 		respond.Error(w, http.StatusInternalServerError, "could not create repair")
 		return
 	}
+	photosSaved = true
 
 	if signaturePath != "" {
 		signedBy := req.SignedByName
@@ -141,6 +202,21 @@ func (s *server) intake(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respond.JSON(w, http.StatusCreated, repair)
+}
+
+func decodePhoto(dataURL string) ([]byte, error) {
+	const prefix = "data:image/jpeg;base64,"
+	if !strings.HasPrefix(dataURL, prefix) {
+		return nil, errors.New("expected a JPEG data URL")
+	}
+	data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(dataURL, prefix))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 || len(data) > 5<<20 || http.DetectContentType(data) != "image/jpeg" {
+		return nil, errors.New("invalid or oversized JPEG image")
+	}
+	return data, nil
 }
 
 // decodeSignature accepts a raw base64 string or a data URL and returns the bytes.
@@ -203,7 +279,27 @@ func (s *server) getRepair(w http.ResponseWriter, r *http.Request) {
 		respond.Error(w, http.StatusInternalServerError, "could not load repair")
 		return
 	}
+	s.addRepairPhotoURLs(r.Context(), &repair)
 	respond.JSON(w, http.StatusOK, repair)
+}
+
+func (s *server) addRepairPhotoURLs(ctx context.Context, repair *models.Repair) {
+	if s.storage == nil {
+		return
+	}
+	addURL := func(path *string, target *string) {
+		if path == nil {
+			return
+		}
+		url, err := s.storage.SignedURL(ctx, *path, 3600)
+		if err != nil {
+			log.Printf("repair %d: could not sign photo URL: %v", repair.ID, err)
+			return
+		}
+		*target = url
+	}
+	addURL(repair.FrontPhotoPath, &repair.FrontPhotoURL)
+	addURL(repair.BackPhotoPath, &repair.BackPhotoURL)
 }
 
 // statusUpdateRequest is the body for changing a repair's status.

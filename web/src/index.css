@@ -103,6 +103,33 @@ button.secondary { background: #eef2ff; color: var(--brand-dark); }
 }
 .repair-row:last-child { border-bottom: none; }
 
+.section-heading { font-size: 16px; margin: 20px 0 4px; }
+.photo-fields, .repair-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.photo-field { min-width: 0; }
+.photo-field input { font-size: 14px; padding: 8px; }
+.photo-preview, .repair-photos img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f9fafb;
+}
+.photo-preview { margin-top: 8px; }
+.repair-photos { margin-top: 12px; }
+.repair-photos figure { min-width: 0; margin: 0; }
+.repair-photos figcaption { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.customer-photos { max-width: 360px; }
+
+@media (max-width: 420px) {
+  .photo-fields, .repair-photos { grid-template-columns: 1fr; }
+}
+
 .badge {
   display: inline-block;
   padding: 3px 10px;
