@@ -1,0 +1,21 @@
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and generated frontend output
+node_modules/
+web/node_modules/
+web/dist/
+dist/
+
+# Go build output
+/bin/
+*.exe
+*.test
+coverage.out
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

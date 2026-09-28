@@ -1,0 +1,13 @@
+# Secrets — never bake into the image (set as App Runner env vars instead)
+.env
+.env.local
+
+# Rebuilt inside the image
+web/node_modules
+web/dist
+node_modules
+
+# VCS / local noise
+.git
+*.log
+.DS_Store
